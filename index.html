@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>薪資試算</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #111827;
+  --surface:   #1F2937;
+  --surface2:  #374151;
+  --border:    rgba(255,255,255,0.08);
+  --border2:   rgba(255,255,255,0.14);
+  --text:      #F9FAFB;
+  --muted:     #9CA3AF;
+  --gold:      #FBBF24;
+  --gold-dim:  rgba(251,191,36,0.12);
+  --green:     #34D399;
+  --green-dim: rgba(52,211,153,0.10);
+  --red:       #F87171;
+  --red-dim:   rgba(248,113,113,0.10);
+}
+
+body {
+  font-family: -apple-system, 'Helvetica Neue', 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border2);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+header h1 { font-size: 17px; font-weight: 700; letter-spacing: 0.03em; color: var(--gold); }
+header span { font-size: 12px; color: var(--muted); }
+
+/* ── LAYOUT ── */
+main {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+.card-head .toggle { font-size: 16px; color: var(--muted); transition: transform 0.2s; }
+.card-head.open .toggle { transform: rotate(180deg); }
+.card-body { padding: 1rem; }
+.card-body.collapsed { display: none; }
+
+/* ── FIELD ROWS ── */
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.field:last-child { border-bottom: none; }
+.field-label { font-size: 13px; color: var(--muted); flex-shrink: 0; }
+.field-right { display: flex; align-items: center; gap: 8px; }
+
+input[type=number], select {
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 6px 10px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type=number] { width: 88px; text-align: right; font-variant-numeric: tabular-nums; }
+select { padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239CA3AF' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; }
+input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(251,191,36,0.18); }
+
+.unit { font-size: 12px; color: var(--muted); }
+
+/* overtime sub-inputs */
+.ot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-top: 4px;
+}
+.ot-grid label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 3px; }
+.ot-grid input { width: 100%; }
+
+/* ── DETAIL ROWS ── */
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.detail-row:last-child { border-bottom: none; }
+.detail-label { font-size: 13px; color: var(--muted); }
+.detail-sub { font-size: 11px; color: var(--muted); margin-top: 2px; opacity: 0.7; }
+.detail-amt { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.amt-pos { color: var(--green); }
+.amt-neg { color: var(--red); }
+.amt-neu { color: var(--text); }
+
+/* ── RESULT CARD ── */
+.result-card {
+  background: var(--green-dim);
+  border: 1px solid rgba(52,211,153,0.25);
+  border-radius: 14px;
+  padding: 1.25rem 1rem;
+  text-align: center;
+}
+.result-label { font-size: 12px; color: var(--green); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+.result-amount { font-size: 42px; font-weight: 800; color: var(--green); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; line-height: 1; }
+.result-sub { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--muted);
+}
+.summary-row span:last-child { font-variant-numeric: tabular-nums; color: var(--text); }
+
+footer { text-align: center; padding: 1.5rem 1rem 2.5rem; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>薪資試算</h1>
+  <span id="trial-month"></span>
+</header>
+
+<main>
+
+  <!-- 基本資料 -->
+  <div class="card">
+    <div class="card-head open" onclick="toggle(this)">
+      基本資料
+      <span class="toggle">▾</span>
+    </div>
+    <div class="card-body">
+      <div class="field">
+        <span class="field-label">試算月份</span>
+        <div class="field-right">
+          <input type="number" id="month" value="3" min="1" max="12" inputmode="numeric"/>
+          <span class="unit">月</span>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">底薪</span>
+        <div class="field-right">
+          <input type="number" id="base" value="36600" inputmode="numeric"/>
+          <span class="unit">元</span>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">月薪（投保基準）</span>
+        <div class="field-right">
+          <input type="number" id="monthly" value="37600" inputmode="numeric"/>
+          <span class="unit">元</span>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">眷屬人數</span>
+        <div class="field-right">
+          <select id="dependents">
+            <option value="0">0 人</option>
+            <option value="1">1 人</option>
+            <option value="2">2 人</option>
+            <option value="3">3 人</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 津貼 -->
+  <div class="card">
+    <div class="card-head open" onclick="toggle(this)">
+      津貼 / 加班
+      <span class="toggle">▾</span>
+    </div>
+    <div class="card-body">
+      <div class="field">
+        <span class="field-label">外勤津貼（天數）</span>
+        <div class="field-right">
+          <input type="number" id="outfield-days" value="1" min="0" inputmode="numeric"/>
+          <span class="unit">天</span>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">外勤單日金額</span>
+        <div class="field-right">
+          <input type="number" id="outfield-rate" value="250" inputmode="numeric"/>
+          <span class="unit">元</span>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">夏日給水津貼</span>
+        <div class="field-right">
+          <input type="number" id="summer" value="0" inputmode="numeric"/>
+          <span class="unit">元</span>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">司機津貼</span>
+        <div class="field-right">
+          <input type="number" id="driver" value="0" inputmode="numeric"/>
+          <span class="unit">元</span>
+        </div>
+      </div>
+      <div class="field" style="flex-wrap:wrap; gap:10px;">
+        <span class="field-label">加班時數</span>
+        <div class="ot-grid" style="flex:1; min-width:220px;">
+          <div>
+            <label>平日 (×1.34)</label>
+            <input type="number" id="ot1" value="4" min="0" inputmode="numeric"/>
+          </div>
+          <div>
+            <label>休息日 (×1.67)</label>
+            <input type="number" id="ot2" value="0" min="0" inputmode="numeric"/>
+          </div>
+          <div>
+            <label>假日 (×2.67)</label>
+            <input type="number" id="ot3" value="0" min="0" inputmode="numeric"/>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">例假日加班天數</span>
+        <div class="field-right">
+          <input type="number" id="holiday-ot" value="0" min="0" inputmode="numeric"/>
+          <span class="unit">天</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 請假 -->
+  <div class="card">
+    <div class="card-head open" onclick="toggle(this)">
+      請假
+      <span class="toggle">▾</span>
+    </div>
+    <div class="card-body">
+      <div class="field">
+        <span class="field-label">生理假（天）</span>
+        <div class="field-right">
+          <input type="number" id="leave-period" value="0" min="0" inputmode="numeric"/>
+          <span class="unit">天</span>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">病假（天）</span>
+        <div class="field-right">
+          <input type="number" id="leave-sick" value="1" min="0" inputmode="numeric"/>
+          <span class="unit">天</span>
+        </div>
+      </div>
+      <div class="field">
+        <span class="field-label">無薪假（天）</span>
+        <div class="field-right">
+          <input type="number" id="leave-unpaid" value="0" min="0" inputmode="numeric"/>
+          <span class="unit">天</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 計算結果實發 -->
+  <div class="result-card">
+    <div class="result-label">本月實發</div>
+    <div class="result-amount" id="res-net">—</div>
+    <div class="result-sub" id="res-month-label"></div>
+    <div style="margin-top:14px; border-top:1px solid rgba(52,211,153,0.2); padding-top:12px;">
+      <div class="summary-row"><span>應發合計</span><span id="sum-gross">—</span></div>
+      <div class="summary-row"><span>應扣合計</span><span id="sum-deduct">—</span></div>
+    </div>
+  </div>
+
+  <!-- 應發明細 -->
+  <div class="card">
+    <div class="card-head open" onclick="toggle(this)">
+      應發明細
+      <span class="toggle">▾</span>
+    </div>
+    <div class="card-body" id="detail-gross"></div>
+  </div>
+
+  <!-- 應扣明細 -->
+  <div class="card">
+    <div class="card-head open" onclick="toggle(this)">
+      應扣明細
+      <span class="toggle">▾</span>
+    </div>
+    <div class="card-body" id="detail-deduct"></div>
+  </div>
+
+</main>
+
+<footer>薪資試算工具 · 數字僅供參考，以公司薪資單為準</footer>
+
+<script>
+// ── 勞健保對照表 ──
+// [月投保金額, 勞保, 健保本人, 健保+1, 健保+2, 健保+3]
+var INS = [
+  [29500,738,458,915,1373,1830],
+  [30300,758,470,940,1410,1880],
+  [31800,795,493,986,1480,1973],
+  [33300,833,516,1033,1549,2066],
+  [34800,870,540,1079,1619,2159],
+  [36300,908,563,1126,1689,2252],
+  [38200,955,592,1185,1777,2370],
+  [40100,1002,622,1244,1866,2488],
+  [42000,1050,651,1303,1954,2606],
+  [43900,1098,681,1362,2043,2724],
+  [45800,1145,710,9709,14564,19419], // ← 高級距健保跳很多，維持原表
+  [48200,1145,700,1495,2243,2990],
+  [50600,1145,4544,1570,2354,3139],
+  [53000,1145,4389,1644,2466,3288],
+  [55400,1145,4234,1719,2578,3437],
+  [57800,1145,4079,1793,2689,3586],
+  [60800,1145,3944,1886,2829,3772],
+  [63800,1145,3809,1979,2969,3958],
+  [66800,1145,3674,2072,3108,4144],
+  [69800,1145,3539,2165,3248,4330],
+  [72800,1145,3404,2258,3387,4517],
+  [76500,1145,3288,2373,3560,4746],
+  [80200,1145,3172,2488,3732,4976],
+  [83900,1145,3055,2603,3904,5205],
+  [87600,1145,2939,2717,4076,5435],
+  [92100,1145,2823,2857,4285,5714],
+  [96600,1145,2724,2997,4495,5993],
+  [101100,1145,2624,3136,4704,6272],
+  [105600,1145,2525,3276,4914,6551],
+  [110100,1145,2426,3415,5123,6831],
+  [115500,1145,2327,3583,5374,7166],
+  [120900,1145,2294,3750,5625,7501],
+  [126300,1145,2210,3918,5877,7836],
+  [131700,1145,2126,4085,6128,8171],
+  [137100,1145,2043,4253,6379,8506],
+  [142500,1145,1959,4420,6631,8841],
+  [147900,1145,1875,4588,6882,9176],
+  [150000,1145,1791,4653,6980,9306],
+  [156400,1145,1708,4852,7277,9703],
+  [162800,1145,1638,5050,7575,10100],
+  [169200,1145,1568,5249,7873,10497],
+  [175600,1145,1498,5447,8171,10894],
+  [182000,1145,1428,5646,8468,11291],
+  [189500,1145,1359,5878,8817,11757],
+  [197000,1145,1301,6111,9166,12222],
+  [204500,1145,1244,6344,9515,12687],
+  [212000,1145,1187,6576,9864,13152],
+  [219500,1145,1129,6809,10213,13618],
+  [228200,1145,1083,7079,10618,14158],
+  [236900,1145,1036,7349,11023,14697],
+  [245600,1145,990,7619,11428,15237],
+  [254300,1145,943,7888,11833,15777],
+  [263000,1145,896,8158,12237,16317],
+  [273000,1145,859,8468,12703,16937],
+  [283000,1145,822,8779,13168,17557],
+  [293000,1145,785,9089,13633,18178],
+  [303000,1145,748,9399,14099,18798],
+  [313000,1145,710,9709,14564,19419]
+];
+
+// 用原表簡化版：直接用 Excel 裡已計算的值查表
+// 依月薪找對應投保級距
+function lookupIns(monthlySalary, dependents) {
+  // 找到第一個 >= monthlySalary 的級距
+  var row = INS[0];
+  for (var i = 0; i < INS.length; i++) {
+    if (INS[i][0] >= monthlySalary) { row = INS[i]; break; }
+    row = INS[INS.length - 1];
+  }
+  // 確保用對的那列
+  for (var j = 0; j < INS.length; j++) {
+    if (INS[j][0] >= monthlySalary) { row = INS[j]; break; }
+  }
+  var labor = row[1];
+  var health = row[2 + Math.min(dependents, 3)];
+  return { labor: labor, health: health, bracket: row[0] };
+}
+
+function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+function fmt(n) {
+  return Math.round(n).toLocaleString('zh-TW');
+}
+
+function detailRow(label, sub, amount, cls) {
+  return '<div class="detail-row">'
+    + '<div><div class="detail-label">' + label + '</div>'
+    + (sub ? '<div class="detail-sub">' + sub + '</div>' : '')
+    + '</div>'
+    + '<div class="detail-amt ' + cls + '">' + (amount >= 0 ? '+' : '') + fmt(amount) + ' 元</div>'
+    + '</div>';
+}
+
+function deductRow(label, sub, amount) {
+  return '<div class="detail-row">'
+    + '<div><div class="detail-label">' + label + '</div>'
+    + (sub ? '<div class="detail-sub">' + sub + '</div>' : '')
+    + '</div>'
+    + '<div class="detail-amt amt-neg">−' + fmt(Math.abs(amount)) + ' 元</div>'
+    + '</div>';
+}
+
+function calculate() {
+  var month      = v('month');
+  var base       = v('base');
+  var monthly    = v('monthly');
+  var dep        = parseInt(document.getElementById('dependents').value);
+  var outDays    = v('outfield-days');
+  var outRate    = v('outfield-rate');
+  var summer     = v('summer');
+  var driver     = v('driver');
+  var ot1        = v('ot1');  // 平日
+  var ot2        = v('ot2');  // 休息日
+  var ot3        = v('ot3');  // 假日
+  var holidayOt  = v('holiday-ot');
+  var leavePeriod= v('leave-period');
+  var leaveSick  = v('leave-sick');
+  var leaveUnpaid= v('leave-unpaid');
+
+  // 日薪（以30天計）
+  var dailyRate = monthly / 30;
+  var hourlyRate = monthly / 30 / 8;
+
+  // 全勤：有任何請假就不給
+  var totalLeave = leavePeriod + leaveSick + leaveUnpaid;
+  var attendance = (totalLeave === 0) ? (monthly / 30) : 0;
+
+  // 加班費
+  var otPay1 = ot1 * hourlyRate * 1.34;
+  var otPay2 = ot2 * hourlyRate * 1.67;
+  var otPay3 = ot3 * hourlyRate * 2.67;
+  var otTotal = otPay1 + otPay2 + otPay3;
+
+  // 外勤津貼
+  var outfield = outDays * outRate;
+
+  // 請假扣款
+  var periodDeduct = leavePeriod * dailyRate * 0.5; // 生理假半薪
+  var sickDeduct   = leaveSick   * dailyRate * 0.5; // 病假半薪
+  var unpaidDeduct = leaveUnpaid * dailyRate;        // 無薪假全扣
+
+  // 應發
+  var gross = base + attendance + otTotal + outfield + summer + driver
+              - periodDeduct - sickDeduct - unpaidDeduct;
+
+  // 勞健保查表
+  var ins = lookupIns(monthly, dep);
+  var welfare = Math.round(monthly * 0.01); // 福利金約1%
+
+  // 應扣
+  var totalDeduct = ins.labor + ins.health + welfare;
+
+  // 實發
+  var net = gross - totalDeduct;
+
+  // ── 更新 UI ──
+  document.getElementById('res-net').textContent = fmt(net) + ' 元';
+  document.getElementById('res-month-label').textContent = month + ' 月份薪資';
+  document.getElementById('sum-gross').textContent = fmt(gross) + ' 元';
+  document.getElementById('sum-deduct').textContent = '−' + fmt(totalDeduct) + ' 元';
+  document.getElementById('trial-month').textContent = month + ' 月份';
+
+  // ── 應發明細 ──
+  var gHtml = '';
+  gHtml += detailRow('底薪', '', base, 'amt-neu');
+  gHtml += detailRow('全勤獎金',
+    totalLeave > 0 ? '有請假，不計全勤' : '本月全勤',
+    attendance, attendance > 0 ? 'amt-pos' : 'amt-neu');
+  if (ot1 > 0) gHtml += detailRow('加班費－平日',
+    ot1 + ' 小時 × 時薪 ' + fmt(hourlyRate) + ' × 1.34',
+    otPay1, 'amt-pos');
+  if (ot2 > 0) gHtml += detailRow('加班費－休息日',
+    ot2 + ' 小時 × 時薪 ' + fmt(hourlyRate) + ' × 1.67',
+    otPay2, 'amt-pos');
+  if (ot3 > 0) gHtml += detailRow('加班費－假日',
+    ot3 + ' 小時 × 時薪 ' + fmt(hourlyRate) + ' × 2.67',
+    otPay3, 'amt-pos');
+  if (outfield > 0) gHtml += detailRow('外勤津貼',
+    outDays + ' 天 × ' + fmt(outRate) + ' 元',
+    outfield, 'amt-pos');
+  if (summer > 0) gHtml += detailRow('夏日給水津貼', '', summer, 'amt-pos');
+  if (driver > 0) gHtml += detailRow('司機津貼', '', driver, 'amt-pos');
+  if (leavePeriod > 0) gHtml += detailRow('生理假扣薪',
+    leavePeriod + ' 天 × 日薪 ' + fmt(dailyRate) + ' × 50%',
+    -periodDeduct, 'amt-neg');
+  if (leaveSick > 0) gHtml += detailRow('病假扣薪',
+    leaveSick + ' 天 × 日薪 ' + fmt(dailyRate) + ' × 50%',
+    -sickDeduct, 'amt-neg');
+  if (leaveUnpaid > 0) gHtml += detailRow('無薪假扣薪',
+    leaveUnpaid + ' 天 × 日薪 ' + fmt(dailyRate),
+    -unpaidDeduct, 'amt-neg');
+  gHtml += '<div class="detail-row" style="border-top:1px solid rgba(255,255,255,0.15);margin-top:4px;padding-top:10px;">'
+    + '<div class="detail-label" style="font-weight:700;color:var(--text)">應發合計</div>'
+    + '<div class="detail-amt amt-neu" style="font-size:16px;">' + fmt(gross) + ' 元</div></div>';
+  document.getElementById('detail-gross').innerHTML = gHtml;
+
+  // ── 應扣明細 ──
+  var dHtml = '';
+  dHtml += deductRow('勞保費',
+    '投保級距 ' + fmt(ins.bracket) + ' 元', ins.labor);
+  dHtml += deductRow('健保費' + (dep > 0 ? '（含眷屬' + dep + '人）' : ''),
+    '投保級距 ' + fmt(ins.bracket) + ' 元', ins.health);
+  dHtml += deductRow('福利金',
+    '月薪 × 1%', welfare);
+  dHtml += '<div class="detail-row" style="border-top:1px solid rgba(255,255,255,0.15);margin-top:4px;padding-top:10px;">'
+    + '<div class="detail-label" style="font-weight:700;color:var(--text)">應扣合計</div>'
+    + '<div class="detail-amt amt-neg" style="font-size:16px;">−' + fmt(totalDeduct) + ' 元</div></div>';
+  document.getElementById('detail-deduct').innerHTML = dHtml;
+}
+
+function toggle(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('collapsed');
+}
+
+// 綁定所有 input 事件
+document.querySelectorAll('input, select').forEach(function(el) {
+  el.addEventListener('input', calculate);
+  el.addEventListener('change', calculate);
+});
+
+calculate();
+</script>
+</body>
+</html>
